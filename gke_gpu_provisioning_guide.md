@@ -12,7 +12,7 @@ Ganti value sesuai project lo:
 
 ```bash
 # ⚠️ GANTI SESUAI PROJECT LO
-export PROJECT_ID="testing-btn"           # <-- ganti ini
+export PROJECT_ID="YOUR_PROJECT_ID"           # <-- ganti ini
 export REGION="asia-southeast2"           # Jakarta
 export ZONE="asia-southeast2-a"           # atau -b, -c
 export CLUSTER_NAME="ekyc-gemma4-cluster"
