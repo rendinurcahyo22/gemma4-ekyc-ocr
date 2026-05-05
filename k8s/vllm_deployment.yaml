@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-gemma4
+  namespace: default
+  labels:
+    app: vllm-gemma4
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-gemma4
+  template:
+    metadata:
+      labels:
+        app: vllm-gemma4
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-accelerator: "nvidia-rtx-pro-6000"
+      containers:
+      - name: vllm
+        image: vllm/vllm-openai:latest
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-secret
+              key: token
+        args:
+        - "--model"
+        - "google/gemma-4-26b-a4b-it"
+        - "--max-model-len"
+        - "8192"
+        - "--max-num-seqs"
+        - "16"
+        - "--gpu-memory-utilization"
+        - "0.85"
+        - "--dtype"
+        - "float16"
+        - "--host"
+        - "0.0.0.0"
+        - "--port"
+        - "8000"
+        resources:
+          limits:
+            nvidia.com/gpu: "1"
+          requests:
+            cpu: "8"
+            memory: "32Gi"
+            nvidia.com/gpu: "1"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          failureThreshold: 30
+        volumeMounts:
+        - name: model-cache
+          mountPath: /root/.cache/huggingface
+        - name: shm
+          mountPath: /dev/shm
+      volumes:
+      - name: model-cache
+        emptyDir:
+          sizeLimit: 100Gi
+      - name: shm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 16Gi
+      tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-gemma4-svc
+spec:
+  type: ClusterIP
+  selector:
+    app: vllm-gemma4
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
